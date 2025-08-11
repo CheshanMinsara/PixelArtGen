@@ -1,13 +1,30 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Use a variable to hold the AI instance, lazily initialized.
+let aiInstance: GoogleGenAI | null = null;
+
+/**
+ * Returns a singleton instance of the GoogleGenAI client.
+ * It initializes the client on the first call. This avoids a crash
+ * on startup if the environment variables are not yet available.
+ */
+function getAiClient(): GoogleGenAI {
+  if (!aiInstance) {
+    // This line will only be executed when the user tries to generate an image.
+    // If `process.env.API_KEY` is not set, it will throw an error here,
+    // which will be caught by the calling function in App.tsx.
+    aiInstance = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  }
+  return aiInstance;
+}
 
 export const generatePixelArt = async (userPrompt: string): Promise<string> => {
     // Enhance the prompt to guide the model towards a specific pixel art style
     const detailedPrompt = `A vibrant, detailed, 16-bit pixel art of: ${userPrompt}. Clean lines, retro gaming aesthetic, masterpiece.`;
     
     try {
+        const ai = getAiClient();
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-002',
             prompt: detailedPrompt,
@@ -27,6 +44,7 @@ export const generatePixelArt = async (userPrompt: string): Promise<string> => {
 
     } catch (error) {
         console.error("Error generating image with Gemini:", error);
+        // Re-throw the error to be handled by the UI component
         throw new Error("API call to generate image failed.");
     }
 };
